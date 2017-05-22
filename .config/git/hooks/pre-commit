@@ -1,0 +1,97 @@
+#!/usr/bin/env python2
+import os
+from subprocess import check_output
+from collections import namedtuple
+
+
+def _check_debug():
+    """Ensures that there are no debug statements."""
+
+    cmd = 'git diff --staged --name-only'
+    staged_files = check_output(cmd.split(' '))
+    staged_files = staged_files.split('\n')
+    staged_files = filter(lambda x: bool(x), staged_files)
+
+    # filter out directories
+    staged_files = filter(lambda x: os.path.isfile(x), staged_files)
+
+    retcode = True
+
+    for staged_file in staged_files:
+        with open(staged_file, 'rb') as input_file:
+            for i, line in enumerate(input_file):
+                if line.find('sjdebug') != -1 or line.find('SJDEBUG') != -1:
+                    print 'File {0} contains sjdebug statement at line {1}'.\
+                        format(staged_file, i)
+                    retcode = False
+
+    return retcode
+
+
+def _check_pep8():
+    """Automatic pep8 corrections using `autopep8` library."""
+
+    retcode = True
+
+    diff_patch_cmd = 'git diff --staged --unified=0'
+    diff_patch = check_output(diff_patch_cmd.split(' '))
+    diff_patch = diff_patch.split('\n')
+
+    Patch = namedtuple(
+        'Patch', 'file_name line_start line_end', verbose=False)
+    patches = []
+    current_hunk_filename = ''
+    for line in diff_patch:
+        if line.startswith('+++'):
+            current_hunk_filename = '.' + line[5:]
+
+        if line.startswith('@@'):
+            line_range = line.split(' ')[2]
+            line_range = line_range.split(',')
+            line_start = int(line_range[0])
+            if len(line_range) > 1:
+                print 'sjdebug', line_range
+                line_end = line_start + int(line_range[1])
+            else:
+                line_end = line_start
+
+            patch = Patch(current_hunk_filename, line_start, line_end)
+            patches.append(patch)
+
+    files_changed = set()
+    python_patches = filter(lambda x: x.file_name.endswith('.py'), patches)
+
+    for patch in python_patches:
+        autopep8_cmd = [
+            'autopep8', '--in-place', '--line-range',
+            str(patch.line_start), str(patch.line_end), patch.file_name]
+
+        check_output(autopep8_cmd)
+        git_diff_cmd = 'git diff ' + patch.file_name
+        changed_diff = check_output(git_diff_cmd.split(' '))
+        if changed_diff:
+            files_changed.add(patch.file_name)
+            retcode = False
+
+    if files_changed:
+        print 'pep8 errors in files autocorrected'
+        for f in files_changed:
+            print f
+    return retcode
+
+
+if __name__ == '__main__':
+
+    ret_debug = _check_debug()
+    if ret_debug is False:
+        print '**********************'
+        print 'Aborting git commit. Remove `sjdebug` statements from code'
+        exit(1)
+
+    ret_check_pep8 = _check_pep8()
+    if ret_check_pep8 is False:
+        print '**********************'
+        print (
+            'Aborting git commit. pep8 errors autoformatted. Run `git add` on '
+            'autoformatted files')
+        exit(1)
