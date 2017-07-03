@@ -1,19 +1,62 @@
 #!/usr/bin/env python2
 import os
-from subprocess import check_output
+from subprocess import check_output, CalledProcessError
 from collections import namedtuple
 
 
-def _check_debug():
+def check_flake8():
+    """Checks for potenatial `flake8` errors."""
+    staged_files = _get_staged_files()
+
+    retcode = True
+
+    flake8_error_files = []
+    for staged_file in staged_files:
+        cmd = 'flake8 {}'.format(staged_file)
+
+        try:
+            check_output(cmd.split(' '))
+        except CalledProcessError:
+            retcode = False
+            flake8_error_files.append(staged_file)
+
+    if flake8_error_files:
+        print 'flake8 errors in following files {}'.format(flake8_error_files)
+
+    return retcode
+
+
+def check_isort():
+    """Ensures that there are no isort errors."""
+
+    staged_files = _get_staged_files()
+
+    retcode = True
+
+    isort_corrected_files = []
+
+    for staged_file in staged_files:
+        cmd = 'isort {} --check'.format(staged_file)
+        try:
+            check_output(cmd.split(' '))
+        except CalledProcessError:
+            retcode = False
+            isort_corrected_files.append(staged_file)
+
+            cmd = 'isort {}'.format(staged_file)
+            check_output(cmd.split(' '))
+
+    if isort_corrected_files:
+        print 'isort errors in following files {}'.format(
+            isort_corrected_files)
+
+    return retcode
+
+
+def check_debug():
     """Ensures that there are no debug statements."""
 
-    cmd = 'git diff --staged --name-only'
-    staged_files = check_output(cmd.split(' '))
-    staged_files = staged_files.split('\n')
-    staged_files = filter(lambda x: bool(x), staged_files)
-
-    # filter out directories
-    staged_files = filter(lambda x: os.path.isfile(x), staged_files)
+    staged_files = _get_staged_files()
 
     retcode = True
 
@@ -28,7 +71,7 @@ def _check_debug():
     return retcode
 
 
-def _check_pep8():
+def check_pep8():
     """Automatic pep8 corrections using `autopep8` library."""
 
     retcode = True
@@ -50,7 +93,6 @@ def _check_pep8():
             line_range = line_range.split(',')
             line_start = int(line_range[0])
             if len(line_range) > 1:
-                print 'sjdebug', line_range
                 line_end = line_start + int(line_range[1])
             else:
                 line_end = line_start
@@ -80,18 +122,44 @@ def _check_pep8():
     return retcode
 
 
+def _get_staged_files():
+    cmd = 'git diff --staged --name-only'
+    staged_files = check_output(cmd.split(' '))
+    staged_files = staged_files.split('\n')
+    staged_files = filter(lambda x: bool(x), staged_files)
+
+    # filter out directories
+    staged_files = filter(lambda x: os.path.isfile(x), staged_files)
+
+    return staged_files
+
+
 if __name__ == '__main__':
 
-    ret_debug = _check_debug()
+    ret_debug = check_debug()
     if ret_debug is False:
         print '**********************'
         print 'Aborting git commit. Remove `sjdebug` statements from code'
         exit(1)
 
-    ret_check_pep8 = _check_pep8()
+    ret_check_pep8 = check_pep8()
     if ret_check_pep8 is False:
         print '**********************'
         print (
             'Aborting git commit. pep8 errors autoformatted. Run `git add` on '
             'autoformatted files')
+        exit(1)
+
+    ret_isort = check_isort()
+    if ret_isort is False:
+        print '**********************'
+        print (
+            'Aborting git commit. `isort` errors autocorrected. Run `git add` '
+            'on autoformatted files')
+        exit(1)
+
+    ret_flake8 = check_flake8()
+    if ret_flake8 is False:
+        print '**********************'
+        print ('Aborting git commit. `flake8` errors detected.')
         exit(1)
