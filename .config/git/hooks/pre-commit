@@ -131,6 +131,9 @@ def _get_staged_files():
     # filter out directories
     staged_files = filter(lambda x: os.path.isfile(x), staged_files)
 
+    # filter out non-python files
+    staged_files = filter(lambda x: x.endswith('py'), staged_files)
+
     return staged_files
 
 
