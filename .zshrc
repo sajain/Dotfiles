@@ -88,6 +88,8 @@ alias lnosetests="nosetests --logging-filter=-sqlalchemy"
 
 alias curlj='curl -H "Accept: application/json" -H "Content-Type: application/json"'
 
+alias agnt='ag --py --ignore-dir="test*"'
+
 ##
 ## PATH variables
 ##
