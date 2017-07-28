@@ -5,8 +5,6 @@
 # Path to your oh-my-zsh installation.
 export ZSH=/Users/saurabh/.oh-my-zsh
 
-source $ZSH/oh-my-zsh.sh
-
 # Set name of the theme to load.
 # Look in ~/.oh-my-zsh/themes/
 # Optionally, if you set this to "random", it'll load a random theme each
@@ -32,6 +30,8 @@ if [ -f ~/.zshrc_squirro ]; then
 else
     echo 'Custom Squirro specific alias file does not exist'
 fi
+
+source $ZSH/oh-my-zsh.sh
 
 ##
 ## Look and feel of prompt
@@ -134,9 +134,11 @@ command -v dtags-activate > /dev/null 2>&1 && eval "`dtags-activate zsh`"
 
 # Use ~~ as the trigger sequence instead of the default **
 # export FZF_COMPLETION_TRIGGER='~~'
-#
-# # Options to fzf command
+
+# Options to fzf command
+export FZF_CTRL_R_OPTS="--exact"
 # export FZF_COMPLETION_OPTS='+c -x'
+
 #
 # Setting ag as the default source for fzf
 export FZF_DEFAULT_COMMAND='ag -g "" --ignore-dir="*node_modules*"' 
@@ -150,6 +152,17 @@ fd() {
   dir=$(find ${1:-.} -path '*/\.*' -prune \
                   -o -type d -print 2> /dev/null | fzf +m) &&
   cd "$dir"
+}
+
+# Reference: https://github.com/junegunn/fzf/wiki/examples
+fkill() {
+  local pid
+  pid=$(ps -ef | sed 1d | fzf -m -e | awk '{print $2}')
+
+  if [ "x$pid" != "x" ]
+  then
+    echo $pid | xargs kill -${1:-9}
+  fi
 }
 
 ##
