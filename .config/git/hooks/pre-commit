@@ -139,30 +139,42 @@ def _get_staged_files():
 
 if __name__ == '__main__':
 
-    ret_debug = check_debug()
-    if ret_debug is False:
-        print '**********************'
-        print 'Aborting git commit. Remove `sjdebug` statements from code'
-        exit(1)
+    try:
+        ret_debug = check_debug()
+        if ret_debug is False:
+            print '**********************'
+            print 'Aborting git commit. Remove `sjdebug` statements from code'
+            exit(1)
+    except Exception as ex:
+        print 'Exception checking sjdebug statements: %r', ex
 
-    ret_check_pep8 = check_pep8()
-    if ret_check_pep8 is False:
-        print '**********************'
-        print (
-            'Aborting git commit. pep8 errors autoformatted. Run `git add` on '
-            'autoformatted files')
-        exit(1)
+    try:
+        ret_check_pep8 = check_pep8()
+        if ret_check_pep8 is False:
+            print '**********************'
+            print (
+                'Aborting git commit. pep8 errors autoformatted. Run `git add` on '
+                'autoformatted files')
+            exit(1)
+    except Exception as ex:
+        print 'Exception checking pep8 errors: %r', ex
 
-    ret_isort = check_isort()
-    if ret_isort is False:
-        print '**********************'
-        print (
-            'Aborting git commit. `isort` errors autocorrected. Run `git add` '
-            'on autoformatted files')
-        exit(1)
+    try:
+        ret_isort = check_isort()
+        if ret_isort is False:
+            print '**********************'
+            print (
+                'Aborting git commit. `isort` errors autocorrected. Run `git add` '
+                'on autoformatted files')
+            exit(1)
+    except Exception as ex:
+        print 'Exception checking isort errors: %r', ex
 
-    ret_flake8 = check_flake8()
-    if ret_flake8 is False:
-        print '**********************'
-        print ('Aborting git commit. `flake8` errors detected.')
-        exit(1)
+    try:
+        ret_flake8 = check_flake8()
+        if ret_flake8 is False:
+            print '**********************'
+            print ('Aborting git commit. `flake8` errors detected.')
+            exit(1)
+    except Exception as ex:
+        print 'Exception checking flake8 errors: %r', ex
