@@ -1,6 +1,7 @@
 #!/usr/bin/env python2
 import os
-from subprocess import check_output, CalledProcessError
+import shlex
+import subprocess
 from collections import namedtuple
 
 
@@ -14,9 +15,10 @@ def check_flake8():
     for staged_file in staged_files:
         cmd = 'flake8 {}'.format(staged_file)
 
-        try:
-            check_output(cmd.split(' '))
-        except CalledProcessError:
+        cmd_output = _execute_cmd(cmd)
+
+        if cmd_output['stdout']:
+            print cmd_output['stdout']
             retcode = False
             flake8_error_files.append(staged_file)
 
@@ -37,14 +39,14 @@ def check_isort():
 
     for staged_file in staged_files:
         cmd = 'isort {} --check'.format(staged_file)
-        try:
-            check_output(cmd.split(' '))
-        except CalledProcessError:
+        cmd_output = _execute_cmd(cmd)
+
+        if 'Imports are incorrectly sorted' in cmd_output['stdout']:
             retcode = False
             isort_corrected_files.append(staged_file)
 
             cmd = 'isort {}'.format(staged_file)
-            check_output(cmd.split(' '))
+            _execute_cmd(cmd)
 
     if isort_corrected_files:
         print 'isort errors in following files {}'.format(
@@ -77,8 +79,8 @@ def check_pep8():
     retcode = True
 
     diff_patch_cmd = 'git diff --staged --unified=0'
-    diff_patch = check_output(diff_patch_cmd.split(' '))
-    diff_patch = diff_patch.split('\n')
+    cmd_output = _execute_cmd(diff_patch_cmd)
+    diff_patch = cmd_output['stdout'].split('\n')
 
     Patch = namedtuple(
         'Patch', 'file_name line_start line_end', verbose=False)
@@ -104,13 +106,12 @@ def check_pep8():
     python_patches = filter(lambda x: x.file_name.endswith('.py'), patches)
 
     for patch in python_patches:
-        autopep8_cmd = [
-            'autopep8', '--in-place', '--line-range',
-            str(patch.line_start), str(patch.line_end), patch.file_name]
+        autopep8_cmd = 'autopep8 --in-place --line-range {0} {1} {2}'.\
+            format(patch.line_start, patch.line_end, patch.file_name)
 
-        check_output(autopep8_cmd)
+        _execute_cmd(autopep8_cmd)
         git_diff_cmd = 'git diff ' + patch.file_name
-        changed_diff = check_output(git_diff_cmd.split(' '))
+        changed_diff = _execute_cmd(git_diff_cmd)
         if changed_diff:
             files_changed.add(patch.file_name)
             retcode = False
@@ -122,10 +123,25 @@ def check_pep8():
     return retcode
 
 
+def _execute_cmd(cmd):
+    ret = {}
+
+    proc = subprocess.Popen(
+        shlex.split(cmd), shell=False, stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    (stdout, stderr) = proc.communicate()
+
+    ret['exitcode'] = proc.returncode
+    ret['stdout'] = stdout
+    ret['stderr'] = stderr
+
+    return ret
+
+
 def _get_staged_files():
     cmd = 'git diff --staged --name-only'
-    staged_files = check_output(cmd.split(' '))
-    staged_files = staged_files.split('\n')
+    cmd_output = _execute_cmd(cmd)
+    staged_files = cmd_output['stdout'].split('\n')
     staged_files = filter(lambda x: bool(x), staged_files)
 
     # filter out directories
@@ -153,8 +169,8 @@ if __name__ == '__main__':
         if ret_check_pep8 is False:
             print '**********************'
             print (
-                'Aborting git commit. pep8 errors autoformatted. Run `git add` on '
-                'autoformatted files')
+                'Aborting git commit. pep8 errors autoformatted. Run `git add`'
+                'on autoformatted files')
             exit(1)
     except Exception as ex:
         print 'Exception checking pep8 errors: %r', ex
@@ -164,8 +180,8 @@ if __name__ == '__main__':
         if ret_isort is False:
             print '**********************'
             print (
-                'Aborting git commit. `isort` errors autocorrected. Run `git add` '
-                'on autoformatted files')
+                'Aborting git commit. `isort` errors autocorrected. Run `git '
+                'add` on autoformatted files')
             exit(1)
     except Exception as ex:
         print 'Exception checking isort errors: %r', ex
