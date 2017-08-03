@@ -1,0 +1,19 @@
+snippet sj "log debugging statement"
+log.warning(u'`!p snip.rv='SJDEBUG, ' + t[1] + ': %r'`', ${1: variable})
+endsnippet
+
+snippet repdb
+from remote_pdb import RemotePdb
+RemotePdb('127.0.0.1', 4444).set_trace()
+endsnippet
+
+snippet pprint
+
+# Pretty printer start
+import pprint
+pp = pprint.PrettyPrinter()
+print 'sjdebug pretty printer'
+pp.pprint(${1: variable})
+# Pretty printer end
+
+endsnippet
