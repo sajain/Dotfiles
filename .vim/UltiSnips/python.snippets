@@ -12,8 +12,18 @@ snippet pprint
 # Pretty printer start
 import pprint
 pp = pprint.PrettyPrinter()
-print 'sjdebug pretty printer'
+print 'SJDEBUG pretty printer'
 pp.pprint(${1: variable})
 # Pretty printer end
+
+endsnippet
+
+snippet jprint
+
+# Json printer start
+import json
+print 'SJDEBUG pretty printer'
+print json.dumps(${1: variable}, indent=2)
+# Json printer end
 
 endsnippet
